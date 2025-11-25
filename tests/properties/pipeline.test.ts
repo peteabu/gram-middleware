@@ -607,11 +607,11 @@ describe('Auto-Downgrade Properties', () => {
    * the middleware should try fallback models in the exact order specified.
    */
   describe('Property 8: Fallback Iteration Order', () => {
-    it('should iterate through fallback models in exact order specified', () => {
-      fc.assert(
-        fc.property(
+    it('should iterate through fallback models in exact order specified', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 2, maxLength: 5 }),
-          (fallbackModels) => {
+          async (fallbackModels) => {
             // Ensure unique model names
             const uniqueFallbacks = [...new Set(fallbackModels)];
             if (uniqueFallbacks.length < 2) return true;
@@ -632,7 +632,7 @@ describe('Auto-Downgrade Properties', () => {
               strict: false,
             });
             
-            const result = findAffordableFallback([], uniqueFallbacks, maxCost, config);
+            const result = await findAffordableFallback([], uniqueFallbacks, maxCost, config);
             
             // Should have tried all models in order
             expect(result.attemptedModels).toEqual(uniqueFallbacks);
@@ -643,11 +643,11 @@ describe('Auto-Downgrade Properties', () => {
       );
     });
 
-    it('should re-estimate cost for each fallback model', () => {
-      fc.assert(
-        fc.property(
+    it('should re-estimate cost for each fallback model', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }),
-          (fallbackModels) => {
+          async (fallbackModels) => {
             const uniqueFallbacks = [...new Set(fallbackModels)];
             if (uniqueFallbacks.length < 1) return true;
             
@@ -665,7 +665,7 @@ describe('Auto-Downgrade Properties', () => {
               fallbackModels: uniqueFallbacks,
             });
 
-            findAffordableFallback([], uniqueFallbacks, maxCost, config);
+            await findAffordableFallback([], uniqueFallbacks, maxCost, config);
             
             // Should have called estimate for each fallback model
             expect(mockGram.estimate).toHaveBeenCalledTimes(uniqueFallbacks.length);
@@ -688,12 +688,12 @@ describe('Auto-Downgrade Properties', () => {
    * should be modified to use that model, and onDowngrade should be called.
    */
   describe('Property 9: Successful Downgrade', () => {
-    it('should return first affordable fallback model', () => {
-      fc.assert(
-        fc.property(
+    it('should return first affordable fallback model', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.float({ min: Math.fround(0.001), max: Math.fround(0.1), noNaN: true }),
           fc.integer({ min: 1, max: 5 }),
-          (maxCost, affordableIndex) => {
+          async (maxCost, affordableIndex) => {
             const fallbackModels = ['model-a', 'model-b', 'model-c', 'model-d', 'model-e'];
             const actualAffordableIndex = Math.min(affordableIndex, fallbackModels.length - 1);
             
@@ -712,7 +712,7 @@ describe('Auto-Downgrade Properties', () => {
               fallbackModels,
             });
 
-            const result = findAffordableFallback([], fallbackModels, maxCost, config);
+            const result = await findAffordableFallback([], fallbackModels, maxCost, config);
             
             expect(result.found).toBe(true);
             expect(result.model).toBe(fallbackModels[actualAffordableIndex]);
@@ -723,13 +723,13 @@ describe('Auto-Downgrade Properties', () => {
       );
     });
 
-    it('should call onDowngrade hook with original model, new model, and positive savings', () => {
-      fc.assert(
-        fc.property(
+    it('should call onDowngrade hook with original model, new model, and positive savings', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.float({ min: Math.fround(0.01), max: Math.fround(1), noNaN: true }),
           fc.string({ minLength: 1, maxLength: 20 }),
           fc.string({ minLength: 1, maxLength: 20 }),
-          (maxCost, originalModel, fallbackModel) => {
+          async (maxCost, originalModel, fallbackModel) => {
             if (originalModel === fallbackModel) return true;
             
             const originalCost = maxCost * 2;
@@ -757,7 +757,7 @@ describe('Auto-Downgrade Properties', () => {
             const args = { model: originalModel };
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
 
-            const result = attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
+            const result = await attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
             
             expect(result.proceed).toBe(true);
             expect(result.downgraded).toBeDefined();
@@ -776,13 +776,13 @@ describe('Auto-Downgrade Properties', () => {
       );
     });
 
-    it('should modify args with new model on successful downgrade', () => {
-      fc.assert(
-        fc.property(
+    it('should modify args with new model on successful downgrade', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.float({ min: Math.fround(0.01), max: Math.fround(1), noNaN: true }),
           fc.string({ minLength: 1, maxLength: 20 }),
           fc.string({ minLength: 1, maxLength: 20 }),
-          (maxCost, originalModel, fallbackModel) => {
+          async (maxCost, originalModel, fallbackModel) => {
             if (originalModel === fallbackModel) return true;
             
             const modelCosts: Record<string, { tokens: number; inputCost: number; outputCost: number }> = {
@@ -802,7 +802,7 @@ describe('Auto-Downgrade Properties', () => {
             const args = { model: originalModel, messages: [] };
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
 
-            const result = attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
+            const result = await attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
             
             expect(result.proceed).toBe(true);
             expect(result.modifiedArgs).toBeDefined();
@@ -823,13 +823,13 @@ describe('Auto-Downgrade Properties', () => {
    * a GramDowngradeError should be thrown containing the original model and list of attempted fallbacks.
    */
   describe('Property 10: Exhausted Fallbacks Strict', () => {
-    it('should return GramDowngradeError when all fallbacks exceed maxCost in strict mode', () => {
-      fc.assert(
-        fc.property(
+    it('should return GramDowngradeError when all fallbacks exceed maxCost in strict mode', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.float({ min: Math.fround(0.001), max: Math.fround(0.1), noNaN: true }),
           fc.string({ minLength: 1, maxLength: 20 }),
           fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }),
-          (maxCost, originalModel, fallbackModels) => {
+          async (maxCost, originalModel, fallbackModels) => {
             const uniqueFallbacks = [...new Set(fallbackModels.filter(m => m !== originalModel))];
             if (uniqueFallbacks.length < 1) return true;
             
@@ -854,7 +854,7 @@ describe('Auto-Downgrade Properties', () => {
             const args = { model: originalModel };
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
-            const result = attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
+            const result = await attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
             
             expect(result.proceed).toBe(false);
             expect(result.error).toBeInstanceOf(GramDowngradeError);
@@ -878,13 +878,13 @@ describe('Auto-Downgrade Properties', () => {
    * onLimitExceeded should be called and the request should proceed with the original model.
    */
   describe('Property 11: Exhausted Fallbacks Lenient', () => {
-    it('should proceed and call onLimitExceeded when all fallbacks exhausted in lenient mode', () => {
-      fc.assert(
-        fc.property(
+    it('should proceed and call onLimitExceeded when all fallbacks exhausted in lenient mode', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.float({ min: Math.fround(0.001), max: Math.fround(0.1), noNaN: true }),
           fc.string({ minLength: 1, maxLength: 20 }),
           fc.array(fc.string({ minLength: 1, maxLength: 20 }), { minLength: 1, maxLength: 5 }),
-          (maxCost, originalModel, fallbackModels) => {
+          async (maxCost, originalModel, fallbackModels) => {
             const uniqueFallbacks = [...new Set(fallbackModels.filter(m => m !== originalModel))];
             if (uniqueFallbacks.length < 1) return true;
             
@@ -914,7 +914,7 @@ describe('Auto-Downgrade Properties', () => {
             const args = { model: originalModel };
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
-            const result = attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
+            const result = await attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
             
             expect(result.proceed).toBe(true);
             expect(result.error).toBeUndefined();
@@ -983,13 +983,13 @@ describe('Auto-Downgrade Properties', () => {
       );
     });
 
-    it('should skip cross-provider models during fallback iteration', () => {
-      fc.assert(
-        fc.property(
+    it('should skip cross-provider models during fallback iteration', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 20 }),
           fc.string({ minLength: 1, maxLength: 20 }),
           fc.string({ minLength: 1, maxLength: 20 }),
-          (originalModel, openaiModel, anthropicModel) => {
+          async (originalModel, openaiModel, anthropicModel) => {
             // Ensure all models are unique
             if (originalModel === openaiModel || originalModel === anthropicModel || openaiModel === anthropicModel) {
               return true;
@@ -1028,7 +1028,7 @@ describe('Auto-Downgrade Properties', () => {
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
             // When using OpenAI provider, should skip Anthropic model and use OpenAI model
-            const result = attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
+            const result = await attemptAutoDowngrade([], originalModel, originalEstimate, 'openai', config, args, setModel);
             
             expect(result.proceed).toBe(true);
             expect(result.downgraded).toBeDefined();
@@ -1497,12 +1497,12 @@ describe('Fail-Safe Error Handling Properties', () => {
    * returning null and logging a warning. This test verifies that behavior through the estimateCost function.
    */
   describe('Property 18: FailOpen Error Recovery', () => {
-    it('should return null and log warning when gram-library throws and failOpen is true (via estimateCost)', () => {
-      fc.assert(
-        fc.property(
+    it('should return null and log warning when gram-library throws and failOpen is true (via estimateCost)', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 100 }),
           fc.string({ minLength: 1, maxLength: 50 }),
-          (errorMessage, model) => {
+          async (errorMessage, model) => {
             const testError = new Error(errorMessage);
             const mockGram = createErrorThrowingGram(testError);
             const logMessages: string[] = [];
@@ -1516,7 +1516,7 @@ describe('Fail-Safe Error Handling Properties', () => {
             });
             
             // estimateCost handles failOpen internally
-            const result = estimateCost([], model, config);
+            const result = await estimateCost([], model, config);
             
             // Should return null (estimation failed)
             expect(result).toBeNull();
@@ -1532,15 +1532,15 @@ describe('Fail-Safe Error Handling Properties', () => {
       );
     });
 
-    it('should proceed with original args when estimation fails and failOpen is true (via safeEvaluateRequest)', () => {
-      fc.assert(
-        fc.property(
+    it('should proceed with original args when estimation fails and failOpen is true (via safeEvaluateRequest)', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 100 }),
           fc.record({
             model: fc.string({ minLength: 1, maxLength: 50 }),
             messages: fc.array(fc.record({ role: fc.string(), content: fc.string() })),
           }),
-          (errorMessage, originalArgs) => {
+          async (errorMessage, originalArgs) => {
             const testError = new Error(errorMessage);
             const mockGram = createErrorThrowingGram(testError);
             
@@ -1552,7 +1552,7 @@ describe('Fail-Safe Error Handling Properties', () => {
             
             const setModel = (args: typeof originalArgs, model: string) => ({ ...args, model });
             
-            const result = safeEvaluateRequest(
+            const result = await safeEvaluateRequest(
               originalArgs.messages,
               originalArgs.model,
               'openai',
@@ -1571,16 +1571,16 @@ describe('Fail-Safe Error Handling Properties', () => {
       );
     });
 
-    it('should not modify original args when estimation fails', () => {
-      fc.assert(
-        fc.property(
+    it('should not modify original args when estimation fails', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 100 }),
           fc.record({
             model: fc.string({ minLength: 1, maxLength: 50 }),
             messages: fc.array(fc.string()),
             max_tokens: fc.integer({ min: 100, max: 4000 }),
           }),
-          (errorMessage, originalArgs) => {
+          async (errorMessage, originalArgs) => {
             const testError = new Error(errorMessage);
             const mockGram = createErrorThrowingGram(testError);
             
@@ -1592,7 +1592,7 @@ describe('Fail-Safe Error Handling Properties', () => {
             const argsCopy = { ...originalArgs };
             const setModel = (a: typeof originalArgs, m: string) => ({ ...a, model: m });
             
-            const result = safeEvaluateRequest([], originalArgs.model, 'openai', config, originalArgs, setModel);
+            const result = await safeEvaluateRequest([], originalArgs.model, 'openai', config, originalArgs, setModel);
             
             // Original args should be unchanged
             expect(result.modifiedArgs).toEqual(argsCopy);
@@ -1603,15 +1603,15 @@ describe('Fail-Safe Error Handling Properties', () => {
       );
     });
 
-    it('should handle any type of error when failOpen is true', () => {
-      fc.assert(
-        fc.property(
+    it('should handle any type of error when failOpen is true', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.oneof(
             fc.string({ minLength: 1 }).map(msg => new Error(msg)),
             fc.string({ minLength: 1 }).map(msg => new TypeError(msg)),
             fc.string({ minLength: 1 }).map(msg => new RangeError(msg))
           ),
-          (error) => {
+          async (error) => {
             const mockGram = createErrorThrowingGram(error);
             
             const config = resolveConfig({
@@ -1623,7 +1623,7 @@ describe('Fail-Safe Error Handling Properties', () => {
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
             // Should not throw - estimateCost catches the error
-            const result = safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
+            const result = await safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
             
             expect(result.proceed).toBe(true);
             return true;
@@ -1642,11 +1642,11 @@ describe('Fail-Safe Error Handling Properties', () => {
    * the error should be propagated to the caller.
    */
   describe('Property 19: FailClosed Error Propagation', () => {
-    it('should propagate error when gram-library throws and failOpen is false (via estimateCost)', () => {
-      fc.assert(
-        fc.property(
+    it('should propagate error when gram-library throws and failOpen is false (via estimateCost)', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 100 }),
-          (errorMessage) => {
+          async (errorMessage) => {
             const testError = new Error(errorMessage);
             const mockGram = createErrorThrowingGram(testError);
             
@@ -1656,9 +1656,9 @@ describe('Fail-Safe Error Handling Properties', () => {
             });
             
             // estimateCost should propagate the error when failOpen is false
-            expect(() => {
-              estimateCost([], 'test-model', config);
-            }).toThrow(testError);
+            await expect(
+              estimateCost([], 'test-model', config)
+            ).rejects.toThrow(testError);
             return true;
           }
         ),
@@ -1666,11 +1666,11 @@ describe('Fail-Safe Error Handling Properties', () => {
       );
     });
 
-    it('should propagate error through safeEvaluateRequest when failOpen is false', () => {
-      fc.assert(
-        fc.property(
+    it('should propagate error through safeEvaluateRequest when failOpen is false', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 100 }),
-          (errorMessage) => {
+          async (errorMessage) => {
             const testError = new Error(errorMessage);
             const mockGram = createErrorThrowingGram(testError);
             
@@ -1682,9 +1682,9 @@ describe('Fail-Safe Error Handling Properties', () => {
             const args = { model: 'test-model' };
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
-            expect(() => {
-              safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
-            }).toThrow(testError);
+            await expect(
+              safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel)
+            ).rejects.toThrow(testError);
             return true;
           }
         ),
@@ -1692,15 +1692,15 @@ describe('Fail-Safe Error Handling Properties', () => {
       );
     });
 
-    it('should preserve error type when propagating', () => {
-      fc.assert(
-        fc.property(
+    it('should preserve error type when propagating', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.oneof(
             fc.string({ minLength: 1 }).map(msg => new Error(msg)),
             fc.string({ minLength: 1 }).map(msg => new TypeError(msg)),
             fc.string({ minLength: 1 }).map(msg => new RangeError(msg))
           ),
-          (error) => {
+          async (error) => {
             const mockGram = createErrorThrowingGram(error);
             
             const config = resolveConfig({
@@ -1712,7 +1712,7 @@ describe('Fail-Safe Error Handling Properties', () => {
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
             try {
-              safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
+              await safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
               // Should have thrown
               return false;
             } catch (e) {
@@ -1726,11 +1726,11 @@ describe('Fail-Safe Error Handling Properties', () => {
       );
     });
 
-    it('should preserve error message when propagating', () => {
-      fc.assert(
-        fc.property(
+    it('should preserve error message when propagating', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 100 }),
-          (errorMessage) => {
+          async (errorMessage) => {
             const testError = new Error(errorMessage);
             const mockGram = createErrorThrowingGram(testError);
             
@@ -1743,7 +1743,7 @@ describe('Fail-Safe Error Handling Properties', () => {
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
             try {
-              safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
+              await safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
               return false;
             } catch (e) {
               expect((e as Error).message).toBe(errorMessage);
@@ -1755,11 +1755,11 @@ describe('Fail-Safe Error Handling Properties', () => {
       );
     });
 
-    it('should not log error recovery message when failOpen is false', () => {
-      fc.assert(
-        fc.property(
+    it('should not log error recovery message when failOpen is false', async () => {
+      await fc.assert(
+        fc.asyncProperty(
           fc.string({ minLength: 1, maxLength: 100 }),
-          (errorMessage) => {
+          async (errorMessage) => {
             const testError = new Error(errorMessage);
             const mockGram = createErrorThrowingGram(testError);
             const logMessages: string[] = [];
@@ -1776,7 +1776,7 @@ describe('Fail-Safe Error Handling Properties', () => {
             const setModel = (a: typeof args, m: string) => ({ ...a, model: m });
             
             try {
-              safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
+              await safeEvaluateRequest([], 'test-model', 'openai', config, args, setModel);
             } catch {
               // Expected to throw
             }

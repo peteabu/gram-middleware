@@ -1,0 +1,29 @@
+# Source files (only ship dist/)
+src/
+tests/
+demo/
+
+# Config files
+tsconfig.json
+tsconfig.cjs.json
+vitest.config.ts
+.kiro/
+
+# Development files
+*.test.ts
+*.spec.ts
+.env
+.env.local
+.DS_Store
+
+# Documentation (except README)
+*.md
+!README.md
+
+# Git
+.git
+.gitignore
+
+# Node
+node_modules/
+npm-debug.log

@@ -77,4 +77,11 @@ export interface ProviderAdapter {
    * @returns The text delta or null if no text in this chunk
    */
   extractStreamDelta(chunk: unknown): string | null;
+
+  /**
+   * Extracts token usage from a non-streaming response
+   * @param response - The response object from the provider
+   * @returns Usage info with prompt and completion tokens, or null if unavailable
+   */
+  extractUsage(response: unknown): { promptTokens: number; completionTokens: number } | null;
 }

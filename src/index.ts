@@ -202,11 +202,15 @@ function createInterceptedMethod(
     if (!result.failedOpen) {
       const estimate = await estimateCost(messages, result.downgraded?.to ?? model, config);
       if (estimate) {
-        // For non-streaming, we need to estimate output tokens from response
-        // This is a simplification - in practice, the response would contain usage info
-        const outputTokens = 0; // Would be extracted from response.usage in real implementation
-        const totalCost = estimate.inputCost; // Simplified - just input cost for now
-        logRequestCompletion(result.downgraded?.to ?? model, estimate.tokens, outputTokens, totalCost, config);
+        // Extract actual token usage from response
+        const usage = adapter.extractUsage(response);
+        const outputTokens = usage?.completionTokens ?? 0;
+        const inputTokens = usage?.promptTokens ?? estimate.tokens;
+
+        // Calculate total cost with actual output tokens
+        const outputCost = (outputTokens * estimate.outputCost) / 1_000_000;
+        const totalCost = estimate.inputCost + outputCost;
+        logRequestCompletion(result.downgraded?.to ?? model, inputTokens, outputTokens, totalCost, config);
       }
     }
 

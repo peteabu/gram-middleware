@@ -35,6 +35,14 @@ interface AnthropicStreamEvent {
   };
 }
 
+/** Anthropic response format */
+interface AnthropicResponse {
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+  };
+}
+
 /**
  * Anthropic adapter implementation
  * Intercepts messages.create calls
@@ -123,5 +131,19 @@ export class AnthropicAdapter implements ProviderAdapter {
       return event.delta.text ?? null;
     }
     return null;
+  }
+
+  /**
+   * Extracts token usage from response.usage
+   */
+  extractUsage(response: unknown): { promptTokens: number; completionTokens: number } | null {
+    const r = response as AnthropicResponse;
+    if (!r.usage) {
+      return null;
+    }
+    return {
+      promptTokens: r.usage.input_tokens,
+      completionTokens: r.usage.output_tokens,
+    };
   }
 }

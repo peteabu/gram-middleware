@@ -29,6 +29,15 @@ interface OpenAIStreamChunk {
   }>;
 }
 
+/** OpenAI response format */
+interface OpenAIResponse {
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
 /**
  * OpenAI adapter implementation
  * Intercepts chat.completions.create calls
@@ -123,5 +132,19 @@ export class OpenAIAdapter implements ProviderAdapter {
     const c = chunk as OpenAIStreamChunk;
     const content = c.choices?.[0]?.delta?.content;
     return content ?? null;
+  }
+
+  /**
+   * Extracts token usage from response.usage
+   */
+  extractUsage(response: unknown): { promptTokens: number; completionTokens: number } | null {
+    const r = response as OpenAIResponse;
+    if (!r.usage) {
+      return null;
+    }
+    return {
+      promptTokens: r.usage.prompt_tokens,
+      completionTokens: r.usage.completion_tokens,
+    };
   }
 }
